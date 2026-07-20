@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const PROTECTED_PREFIXES = ['/dashboard', '/landlord', '/admin']
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -23,8 +25,35 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Refreshes the session if expired — required for Server Components
-  await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const path = request.nextUrl.pathname
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))
+
+  if (isProtected && !user) {
+    const redirectUrl = new URL('/login', request.url)
+    redirectUrl.searchParams.set('redirectTo', path)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Role-based access: landlord and admin areas need the right role
+  if (user && (path.startsWith('/landlord') || path.startsWith('/admin'))) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (path.startsWith('/landlord') && profile?.role !== 'landlord' && profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    if (path.startsWith('/admin') && profile?.role !== 'admin' && profile?.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
 
   return supabaseResponse
 }
