@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { LogoutButton } from "@/components/shared/logout-button"
+import { VerifiedBadge } from "@/components/shared/verified-badge"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -20,7 +21,10 @@ export default async function DashboardPage() {
     <main className="p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Welcome, {profile?.full_name}</h1>
-        <LogoutButton />
+       <div className="flex items-center gap-3">
+          <VerifiedBadge size="sm" />
+          <LogoutButton />
+        </div>
       </div>
       <p className="mt-2 text-gray-600">Email: {user.email}</p>
       <p className="text-gray-600">Role: {profile?.role}</p>
